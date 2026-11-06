@@ -29,3 +29,29 @@ if(BUILD_TESTING)
     target_link_libraries(search_config_test PRIVATE search_config)
     add_test(NAME search_config COMMAND search_config_test)
 endif()
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PQXX REQUIRED IMPORTED_TARGET libpqxx>=7.0)
+add_library(search_database src/database.cpp)
+target_compile_features(search_database PUBLIC cxx_std_20)
+set_target_properties(search_database PROPERTIES CXX_EXTENSIONS OFF)
+target_include_directories(search_database PUBLIC src)
+target_link_libraries(search_database PUBLIC PkgConfig::PQXX search_config search_text)
+
+add_executable(search_indexer src/indexer.cpp)
+target_link_libraries(search_indexer PRIVATE search_database)
+
+option(SEARCH_POSTGRES_TESTS "Run integration tests with an isolated PostgreSQL cluster" OFF)
+if(BUILD_TESTING AND SEARCH_POSTGRES_TESTS)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    find_program(POSTGRES_INITDB initdb
+        HINTS /usr/lib/postgresql/18/bin /usr/lib/postgresql/17/bin /usr/lib/postgresql/16/bin
+        REQUIRED)
+    get_filename_component(POSTGRES_BIN "${POSTGRES_INITDB}" DIRECTORY)
+    add_executable(search_database_test tests/database_test.cpp)
+    target_link_libraries(search_database_test PRIVATE search_database)
+    add_test(NAME search_postgres COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/postgres_test.py"
+        "${POSTGRES_BIN}" "$<TARGET_FILE:search_database_test>" "$<TARGET_FILE:search_indexer>")
+    set_tests_properties(search_postgres PROPERTIES TIMEOUT 90)
+endif()
