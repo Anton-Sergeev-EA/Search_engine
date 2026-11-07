@@ -38,8 +38,9 @@ set_target_properties(search_database PROPERTIES CXX_EXTENSIONS OFF)
 target_include_directories(search_database PUBLIC src)
 target_link_libraries(search_database PUBLIC PkgConfig::PQXX search_config search_text)
 
+find_package(Threads REQUIRED)
 add_executable(search_indexer src/indexer.cpp)
-target_link_libraries(search_indexer PRIVATE search_database)
+target_link_libraries(search_indexer PRIVATE search_database Threads::Threads)
 
 option(SEARCH_POSTGRES_TESTS "Run integration tests with an isolated PostgreSQL cluster" OFF)
 if(BUILD_TESTING AND SEARCH_POSTGRES_TESTS)

@@ -90,6 +90,29 @@ def main() -> None:
             == "2"
         )
         assert run([*query, "SELECT COUNT(*) FROM documents"]).stdout.strip() == "2"
+        for number in range(24):
+            (documents / f"extra-{number}.txt").write_text(
+                "слово " * 3000, encoding="utf-8"
+            )
+        run([indexer, str(config)])
+        assert (
+            run([*query, "SELECT SUM(frequency) FROM document_words"]).stdout.strip()
+            == "72002"
+        )
+        blocked = documents / "extra-0.txt"
+        blocked.chmod(0)
+        try:
+            assert (
+                subprocess.run([indexer, str(config)], capture_output=True).returncode
+                == 1
+            )
+        finally:
+            blocked.chmod(0o600)
+        assert (
+            run([*query, "SELECT SUM(frequency) FROM document_words"]).stdout.strip()
+            == "72002"
+        )
+        assert run([*query, "SELECT COUNT(*) FROM documents"]).stdout.strip() == "26"
         # Переиндексация пустого набора убирает прежние документы каталога.
         config.write_text(
             config.read_text(encoding="utf-8").replace(

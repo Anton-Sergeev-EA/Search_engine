@@ -4,13 +4,13 @@
 
 Я разрабатываю поисковую систему для текстовых файлов на C++20. Индексатор будет сохранять частоты слов в PostgreSQL, а поисковый сервер будет ранжировать документы по суммарной частоте слов запроса.
 
-Реализованы обработка текста UTF-8, чтение INI, обход каталогов и последовательный индексатор PostgreSQL. Для сборки нужны CMake 3.20+, компилятор C++20, ICU, pkg-config и libpqxx 7.x.
+Реализованы обработка текста UTF-8, чтение INI, обход каталогов и многопоточный индексатор PostgreSQL. Для сборки нужны CMake 3.20+, компилятор C++20, ICU, pkg-config и libpqxx 7.x.
 
 ## English
 
 I am building a C++20 search engine for text files. The indexer will store word frequencies in PostgreSQL, and the search server will rank documents by the total frequency of the query terms.
 
-UTF-8 processing, INI configuration, directory scanning, and a sequential PostgreSQL indexer are implemented. Building requires CMake 3.20+, a C++20 compiler, ICU, pkg-config, and libpqxx 7.x.
+UTF-8 processing, INI configuration, directory scanning, and a parallel PostgreSQL indexer are implemented. Building requires CMake 3.20+, a C++20 compiler, ICU, pkg-config, and libpqxx 7.x.
 
 ```sh
 cmake -S . -B build
@@ -65,11 +65,13 @@ directory's index, including stale documents. Failures preserve its previous
 index. Other directories retain their data. PostgreSQL locks serialize writers.
 An empty document set clears the selected directory's index. Files must use UTF-8.
 
-Индексатор пока работает последовательно и держит частоты всех документов в
-памяти. Поисковый сервер и пул потоков запланированы на следующие этапы.
+Индексатор распределяет чтение и подсчёт слов между потоками. Число потоков
+зависит от числа файлов и доступных ядер, максимум восемь. При ошибке чтения
+прежний индекс сохраняется. Частоты всех документов хранятся в памяти до записи.
 
-The indexer currently runs sequentially and keeps all document word counts in
-memory. The search server and thread pool are planned for subsequent stages.
+The indexer reads files and counts words in parallel using up to eight workers,
+based on the number of files and available CPUs. A read failure preserves the
+previous index. Document word counts stay in memory until the database write.
 
 ## Проверки PostgreSQL / PostgreSQL checks
 
