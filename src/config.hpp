@@ -19,6 +19,7 @@ struct Config {
     DatabaseConfig database;
     std::filesystem::path directory;
     std::vector<std::string> extensions;
+    std::uint16_t search_port = 8080;
 };
 
 Config load_config(const std::filesystem::path& path);

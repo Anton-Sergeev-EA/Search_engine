@@ -31,6 +31,37 @@ std::string connection_options(const DatabaseConfig& config) {
 
 Database::Database(const DatabaseConfig& config) : connection_(connection_options(config)) {}
 
+std::vector<SearchHit> Database::find_matches(const std::vector<std::string>& terms) {
+    if (terms.empty() || terms.size() > 4) {
+        throw std::invalid_argument("Expected one to four search terms");
+    }
+    auto parameters = terms;
+    parameters.resize(4);
+    pqxx::read_transaction transaction(connection_);
+    transaction.exec("SET LOCAL statement_timeout = '5s'");
+    const auto rows = transaction.exec_params(R"(
+        WITH matches AS (
+            SELECT d.path, SUM(dw.frequency) AS score
+            FROM documents d
+            JOIN document_words dw ON dw.document_id = d.id
+            JOIN words w ON w.id = dw.word_id
+            WHERE w.word IN ($1, $2, $3, $4) AND w.word <> ''
+            GROUP BY d.id
+            HAVING COUNT(*) = $5
+        )
+        SELECT path, MAX(score) AS score
+        FROM matches
+        GROUP BY path
+        ORDER BY score DESC, path COLLATE "C"
+        LIMIT 10
+    )", parameters[0], parameters[1], parameters[2], parameters[3], terms.size());
+    std::vector<SearchHit> hits;
+    for (const auto& row : rows) {
+        hits.push_back({row[0].as<std::string>(), row[1].as<std::string>()});
+    }
+    return hits;
+}
+
 void Database::initialize() {
     pqxx::work transaction(connection_);
     transaction.exec_params("SELECT pg_advisory_xact_lock($1)", 830164925);

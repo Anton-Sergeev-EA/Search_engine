@@ -18,6 +18,16 @@ std::string trim(std::string_view text) {
     return std::string(text.substr(first, text.find_last_not_of(" \t\r") - first + 1));
 }
 
+std::uint16_t parse_port(const std::string& text, const char* setting) {
+    unsigned int port = 0;
+    const auto end = text.data() + text.size();
+    const auto result = std::from_chars(text.data(), end, port);
+    if (result.ec != std::errc{} || result.ptr != end || port == 0 || port > 65535) {
+        throw std::runtime_error(std::string(setting) + " must be between 1 and 65535");
+    }
+    return static_cast<std::uint16_t>(port);
+}
+
 }  // namespace
 
 Config load_config(const std::filesystem::path& path) {
@@ -40,7 +50,7 @@ Config load_config(const std::filesystem::path& path) {
         }
         if (line.front() == '[' && line.back() == ']') {
             section = trim(std::string_view(line).substr(1, line.size() - 2));
-            if (section != "database" && section != "indexer") {
+            if (section != "database" && section != "indexer" && section != "search") {
                 throw std::runtime_error("Unknown configuration section at line " +
                                          std::to_string(number));
             }
@@ -51,7 +61,7 @@ Config load_config(const std::filesystem::path& path) {
             throw std::runtime_error("Invalid configuration at line " + std::to_string(number));
         }
         const auto key = section + "." + trim(std::string_view(line).substr(0, equal));
-        if (std::find(allowed.begin(), allowed.end(), key) == allowed.end() ||
+        if ((std::find(allowed.begin(), allowed.end(), key) == allowed.end() && key != "search.port") ||
             values.contains(key)) {
             throw std::runtime_error("Unknown or duplicate setting at line " +
                                      std::to_string(number));
@@ -66,18 +76,13 @@ Config load_config(const std::filesystem::path& path) {
             throw std::runtime_error("Missing configuration setting " + key);
         }
     }
-    unsigned int port = 0;
-    const auto& port_text = values.at("database.port");
-    const auto result = std::from_chars(port_text.data(), port_text.data() + port_text.size(), port);
-    if (result.ec != std::errc{} || result.ptr != port_text.data() + port_text.size() ||
-        port == 0 || port > 65535) {
-        throw std::runtime_error("Database port must be between 1 and 65535");
-    }
-
-    Config config{{values.at("database.host"), static_cast<std::uint16_t>(port),
+    Config config{{values.at("database.host"), parse_port(values.at("database.port"), "Database port"),
                    values.at("database.name"), values.at("database.user"),
                    values.at("database.password")},
                   values.at("indexer.directory"), {}};
+    if (values.contains("search.port")) {
+        config.search_port = parse_port(values.at("search.port"), "Search port");
+    }
     if (config.directory.is_relative()) {
         config.directory = std::filesystem::absolute(path).parent_path() / config.directory;
     }

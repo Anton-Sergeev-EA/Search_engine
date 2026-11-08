@@ -42,6 +42,10 @@ find_package(Threads REQUIRED)
 add_executable(search_indexer src/indexer.cpp)
 target_link_libraries(search_indexer PRIVATE search_database Threads::Threads)
 
+find_package(Boost 1.74 REQUIRED)
+add_executable(search_query src/search.cpp)
+target_link_libraries(search_query PRIVATE search_database Boost::boost Threads::Threads)
+
 option(SEARCH_POSTGRES_TESTS "Run integration tests with an isolated PostgreSQL cluster" OFF)
 if(BUILD_TESTING AND SEARCH_POSTGRES_TESTS)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
@@ -53,6 +57,7 @@ if(BUILD_TESTING AND SEARCH_POSTGRES_TESTS)
     target_link_libraries(search_database_test PRIVATE search_database)
     add_test(NAME search_postgres COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/postgres_test.py"
-        "${POSTGRES_BIN}" "$<TARGET_FILE:search_database_test>" "$<TARGET_FILE:search_indexer>")
+        "${POSTGRES_BIN}" "$<TARGET_FILE:search_database_test>" "$<TARGET_FILE:search_indexer>"
+        "$<TARGET_FILE:search_query>")
     set_tests_properties(search_postgres PROPERTIES TIMEOUT 90)
 endif()

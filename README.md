@@ -4,13 +4,13 @@
 
 Я разрабатываю поисковую систему для текстовых файлов на C++20. Индексатор будет сохранять частоты слов в PostgreSQL, а поисковый сервер будет ранжировать документы по суммарной частоте слов запроса.
 
-Реализованы обработка текста UTF-8, чтение INI, обход каталогов и многопоточный индексатор PostgreSQL. Для сборки нужны CMake 3.20+, компилятор C++20, ICU, pkg-config и libpqxx 7.x.
+Реализованы обработка текста UTF-8, чтение INI, обход каталогов и многопоточный индексатор PostgreSQL. Для сборки нужны CMake 3.20+, компилятор C++20, ICU, pkg-config, libpqxx 7.x и Boost 1.74+.
 
 ## English
 
 I am building a C++20 search engine for text files. The indexer will store word frequencies in PostgreSQL, and the search server will rank documents by the total frequency of the query terms.
 
-UTF-8 processing, INI configuration, directory scanning, and a parallel PostgreSQL indexer are implemented. Building requires CMake 3.20+, a C++20 compiler, ICU, pkg-config, and libpqxx 7.x.
+UTF-8 processing, INI configuration, directory scanning, and a parallel PostgreSQL indexer are implemented. Building requires CMake 3.20+, a C++20 compiler, ICU, pkg-config, libpqxx 7.x, and Boost 1.74+.
 
 ```sh
 cmake -S . -B build
@@ -72,6 +72,35 @@ An empty document set clears the selected directory's index. Files must use UTF-
 The indexer reads files and counts words in parallel using up to eight workers,
 based on the number of files and available CPUs. A read failure preserves the
 previous index. Document word counts stay in memory until the database write.
+
+## Поиск / Search
+
+После индексации запустите поиск и вводите запросы по одному на строку.
+Для выхода нажмите Ctrl+D. Для HTTP-режима задайте порт в необязательной
+секции `[search]` (по умолчанию 8080). Сервер принимает запросы на локальном
+адресе 127.0.0.1 и обрабатывает по одному соединению за раз.
+
+After indexing, start the console and enter one query per line. Press Ctrl+D
+to exit. For HTTP mode, set the port in the optional `[search]` section
+(default 8080). The server listens on 127.0.0.1 and handles one connection at a time.
+
+```sh
+./build/search_query config.ini
+./build/search_query config.ini --http
+curl --data-binary 'привет мир' http://127.0.0.1:8080/search
+```
+
+Введите от одного до четырёх слов после нормализации. Повторы учитываются
+один раз. В выдачу попадают до десяти файлов со всеми словами запроса.
+Результаты отсортированы по убыванию суммы частот, при равенстве — по пути.
+В каждой строке выводятся оценка и путь через табуляцию. HTTP принимает
+UTF-8 в теле `POST /search` размером до 4096 байт.
+
+Enter one to four words after normalization. Repeated terms count once.
+The result includes up to ten files containing every search term, sorted by
+total frequency in descending order, then by path. Each line contains a score
+and a tab-separated path. Send a UTF-8 body of up to 4096 bytes to
+`POST /search`.
 
 ## Проверки PostgreSQL / PostgreSQL checks
 
