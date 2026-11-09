@@ -4,10 +4,10 @@
 
 ## Русский
 
-Я написал Search Engine на C++20 для поиска по локальным текстовым файлам
-в UTF-8. Индексатор рекурсивно обходит каталог, параллельно подсчитывает
-частоты слов и сохраняет индекс в PostgreSQL. Искать можно через консоль
-или HTTP.
+Search Engine — поисковая система на C++20 для локальных текстовых файлов
+в UTF-8. Индексатор рекурсивно обходит каталог и параллельно подсчитывает
+частоты слов. Индекс хранится в PostgreSQL, поиск доступен через консоль
+и HTTP API.
 
 ### Запуск через Docker Compose
 
@@ -27,9 +27,15 @@
 ```bash
 chmod 600 config.ini
 export SEARCH_UID="$(id -u)" SEARCH_GID="$(id -g)"
-read -rsp 'Пароль PostgreSQL: ' SEARCH_DB_PASSWORD; echo
+read -rsp 'Пароль PostgreSQL: ' SEARCH_DB_PASSWORD
+printf '\n'
 export SEARCH_DB_PASSWORD
 docker compose --env-file /dev/null up --build -d
+```
+
+Отправьте запрос к HTTP API.
+
+```bash
 curl --fail-with-body --data-binary 'привет мир' http://127.0.0.1:8080/search
 ```
 
@@ -39,6 +45,11 @@ Compose запускает поиск после успешной индекса
 
 ```bash
 docker compose --env-file /dev/null run --rm indexer
+```
+
+Остановите сервисы командой ниже.
+
+```bash
 docker compose --env-file /dev/null down
 ```
 
@@ -83,9 +94,9 @@ CTest и сквозную проверку Docker Compose, которую мож
 
 ## English
 
-I built Search Engine in C++20 to search local UTF-8 text files. The indexer
-walks a directory recursively, counts word frequencies in parallel, and stores
-the index in PostgreSQL. Queries run through the console or over HTTP.
+Search Engine is a C++20 search engine for local UTF-8 text files. The indexer
+scans directories recursively and counts word frequencies in parallel. PostgreSQL
+stores the index, and queries run through the console or HTTP API.
 
 ### Run with Docker Compose
 
@@ -105,9 +116,15 @@ enter the same password as in `config.ini`.
 ```bash
 chmod 600 config.ini
 export SEARCH_UID="$(id -u)" SEARCH_GID="$(id -g)"
-read -rsp 'PostgreSQL password: ' SEARCH_DB_PASSWORD; echo
+read -rsp 'PostgreSQL password: ' SEARCH_DB_PASSWORD
+printf '\n'
 export SEARCH_DB_PASSWORD
 docker compose --env-file /dev/null up --build -d
+```
+
+Send a query to the HTTP API.
+
+```bash
 curl --fail-with-body --data-binary 'hello world' http://127.0.0.1:8080/search
 ```
 
@@ -117,6 +134,11 @@ with `down` keeps PostgreSQL data in its volume.
 
 ```bash
 docker compose --env-file /dev/null run --rm indexer
+```
+
+Stop the services with the following command.
+
+```bash
 docker compose --env-file /dev/null down
 ```
 
