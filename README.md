@@ -92,6 +92,10 @@ ctest --test-dir build --output-on-failure
 CTest и сквозную проверку Docker Compose, которую можно повторить командой
 `python3 tests/compose_test.py`.
 
+### Лицензия
+
+Разработчик — Сергеев Антон Валентинович. Проект распространяется по [лицензии MIT](LICENSE).
+
 ## English
 
 Search Engine is a C++20 search engine for local UTF-8 text files. The indexer
@@ -179,3 +183,7 @@ Enter one query per line. For HTTP, run
 `./build/search_query config.ini --http`. GitHub Actions runs CTest and the
 Docker Compose end-to-end check. Run the latter locally with
 `python3 tests/compose_test.py`.
+
+### License
+
+Developed by Anton Valentinovich Sergeev. Released under the [MIT License](LICENSE).
