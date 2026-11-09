@@ -61,7 +61,8 @@ Config load_config(const std::filesystem::path& path) {
             throw std::runtime_error("Invalid configuration at line " + std::to_string(number));
         }
         const auto key = section + "." + trim(std::string_view(line).substr(0, equal));
-        if ((std::find(allowed.begin(), allowed.end(), key) == allowed.end() && key != "search.port") ||
+        if ((std::find(allowed.begin(), allowed.end(), key) == allowed.end() &&
+             key != "search.port" && key != "search.address") ||
             values.contains(key)) {
             throw std::runtime_error("Unknown or duplicate setting at line " +
                                      std::to_string(number));
@@ -82,6 +83,9 @@ Config load_config(const std::filesystem::path& path) {
                   values.at("indexer.directory"), {}};
     if (values.contains("search.port")) {
         config.search_port = parse_port(values.at("search.port"), "Search port");
+    }
+    if (values.contains("search.address")) {
+        config.search_address = values.at("search.address");
     }
     if (config.directory.is_relative()) {
         config.directory = std::filesystem::absolute(path).parent_path() / config.directory;

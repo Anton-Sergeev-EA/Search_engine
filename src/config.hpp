@@ -20,6 +20,7 @@ struct Config {
     std::filesystem::path directory;
     std::vector<std::string> extensions;
     std::uint16_t search_port = 8080;
+    std::string search_address = "127.0.0.1";
 };
 
 Config load_config(const std::filesystem::path& path);

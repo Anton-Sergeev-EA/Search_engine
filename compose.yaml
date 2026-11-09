@@ -1,0 +1,62 @@
+x-app: &app
+  build: .
+  image: search-engine:local
+  user: "${SEARCH_UID:-10001}:${SEARCH_GID:-10001}"
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  volumes:
+    - type: bind
+      source: ${SEARCH_CONFIG:-./config.ini}
+      target: /run/search/config.ini
+      read_only: true
+      bind:
+        create_host_path: false
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: search_engine
+      POSTGRES_USER: search_engine
+      POSTGRES_PASSWORD: "${SEARCH_DB_PASSWORD:?Set SEARCH_DB_PASSWORD}"
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "search_engine", "-d", "search_engine"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  indexer:
+    <<: *app
+    command: ["search_indexer", "/run/search/config.ini"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: ${SEARCH_CONFIG:-./config.ini}
+        target: /run/search/config.ini
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SEARCH_DOCUMENTS:-./documents}
+        target: /documents
+        read_only: true
+        bind:
+          create_host_path: false
+
+  search:
+    <<: *app
+    depends_on:
+      indexer:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${SEARCH_HTTP_PORT:-8080}:8080"
+
+volumes:
+  database:

@@ -116,13 +116,14 @@ int main(int argc, char* argv[]) {
             return 0;
         }
         net::io_context context(1);
-        tcp::acceptor acceptor(context, {net::ip::address_v4::loopback(), config.search_port});
+        tcp::acceptor acceptor(context, {net::ip::make_address(config.search_address),
+                                         config.search_port});
         net::co_spawn(context, serve(acceptor, config.database), [](std::exception_ptr error) {
             if (error) {
                 std::rethrow_exception(error);
             }
         });
-        std::cout << "Listening on 127.0.0.1:" << config.search_port << std::endl;
+        std::cout << "Listening on " << acceptor.local_endpoint() << std::endl;
         context.run();
     } catch (const std::exception&) {
         std::cerr << "Internal search error\n";

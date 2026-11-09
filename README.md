@@ -120,3 +120,57 @@ cmake -S . -B build -DSEARCH_POSTGRES_TESTS=ON
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
+
+## Docker Compose
+
+В локальном `config.ini` задайте `database.host=db`, `database.port=5432`,
+`database.name=search_engine`, `database.user=search_engine`,
+`indexer.directory=/documents`, `search.address=0.0.0.0` и `search.port=8080`.
+Укажите пароль PostgreSQL в `database.password` и ограничьте доступ к INI
+правами владельца. По умолчанию Compose берёт документы из `./documents`.
+Этот каталог должен существовать. Другой путь можно задать через
+`SEARCH_DOCUMENTS`, а другой порт на компьютере — через `SEARCH_HTTP_PORT`.
+
+In the local `config.ini`, set `database.host=db`, `database.port=5432`,
+`database.name=search_engine`, `database.user=search_engine`,
+`indexer.directory=/documents`, `search.address=0.0.0.0`, and `search.port=8080`.
+Set the PostgreSQL password in `database.password` and restrict access to the
+INI file to its owner. Compose reads documents from the existing `./documents`
+directory by default. Set `SEARCH_DOCUMENTS` for another directory or
+`SEARCH_HTTP_PORT` for another host port.
+
+```bash
+export SEARCH_UID="$(id -u)" SEARCH_GID="$(id -g)"
+read -rsp 'PostgreSQL password: ' SEARCH_DB_PASSWORD
+echo
+export SEARCH_DB_PASSWORD
+docker compose --env-file /dev/null up --build -d
+curl --data-binary 'привет мир' http://127.0.0.1:8080/search
+```
+
+Введите тот же пароль, что и в INI. При первом запуске Compose ждёт готовности
+PostgreSQL и завершения индексатора. HTTP доступен только через локальный порт,
+а данные PostgreSQL сохраняются в томе. После изменения документов запустите
+индексатор заново. Для остановки используйте `docker compose --env-file /dev/null down`.
+
+Enter the same password as in the INI file. On first startup, Compose waits
+for PostgreSQL and a successful indexer run. HTTP is exposed on the host's
+loopback interface, and PostgreSQL data persists in a volume. Rerun the indexer
+after changing documents. To stop the stack, use
+`docker compose --env-file /dev/null down`.
+
+```bash
+docker compose --env-file /dev/null run --rm indexer
+```
+
+Сквозная проверка Compose создаёт отдельную тестовую базу, индексирует три
+файла и проверяет ранжирование по HTTP. GitHub Actions запускает её вместе
+со сборкой и CTest на каждый push и pull request.
+
+The Compose integration check creates a separate test database, indexes three
+files, and verifies HTTP ranking. GitHub Actions runs it alongside the build
+and CTest on pushes and pull requests.
+
+```sh
+python3 tests/compose_test.py
+```

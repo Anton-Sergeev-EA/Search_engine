@@ -1,0 +1,25 @@
+name: Build and test
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install build and test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libboost-dev libicu-dev libpqxx-dev ninja-build pkg-config postgresql-16
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSEARCH_POSTGRES_TESTS=ON "-DCMAKE_CXX_FLAGS=-Wall -Wextra -Wpedantic -Werror"
+          cmake --build build --parallel 2
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Test Compose stack
+        run: python3 tests/compose_test.py
