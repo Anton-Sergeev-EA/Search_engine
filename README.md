@@ -65,6 +65,8 @@ docker compose --env-file /dev/null down
 Индексатор пропускает символические ссылки. Повторный запуск заменяет индекс
 выбранного каталога одной транзакцией и убирает записи об исчезнувших файлах.
 Если обработка завершается ошибкой, предыдущий индекс остаётся доступен.
+При недоступности PostgreSQL HTTP возвращает `500 Internal Server Error`.
+После восстановления базы следующий запрос выполняется без перезапуска поиска.
 
 ### Локальная сборка и тесты
 
@@ -156,7 +158,9 @@ tab-separated score and path per line, or `No results` when nothing matches.
 
 The indexer skips symbolic links. Rerunning it replaces the selected directory's
 index in a single transaction and drops records for missing files. If indexing
-fails, the previous index stays available.
+fails, the previous index stays available. When PostgreSQL is unavailable,
+HTTP returns `500 Internal Server Error`. Once the database is back, the next
+query can run without restarting the search server.
 
 ### Build and test locally
 

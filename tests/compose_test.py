@@ -68,13 +68,20 @@ def main() -> None:
             compose("up", "--build", "-d")
             endpoint = compose("port", "search", "8080", capture=True).strip()
             port = int(endpoint.rsplit(":", 1)[1])
-            deadline = time.monotonic() + 15
-            while True:
-                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+
+            def query() -> tuple[int, str]:
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
                 try:
                     connection.request("POST", "/search", "ПРИВЕТ, мир".encode())
                     response = connection.getresponse()
-                    body = response.read().decode()
+                    return response.status, response.read().decode()
+                finally:
+                    connection.close()
+
+            deadline = time.monotonic() + 15
+            while True:
+                try:
+                    result = query()
                     break
                 except (
                     ConnectionRefusedError,
@@ -84,14 +91,23 @@ def main() -> None:
                     if time.monotonic() >= deadline:
                         raise
                     time.sleep(0.1)
-                finally:
-                    connection.close()
-            expected = "3\t/documents/first.txt\n2\t/documents/second.txt\n"
-            if response.status != 200 or body != expected:
+            expected = (200, "3\t/documents/first.txt\n2\t/documents/second.txt\n")
+            if result != expected:
+                raise RuntimeError(f"Unexpected search response: {result!r}")
+
+            compose("stop", "db")
+            result = query()
+            if result != (500, "Internal search error\n"):
                 raise RuntimeError(
-                    f"Unexpected search response: HTTP {response.status}, {body!r}"
+                    f"Unexpected response during database outage: {result!r}"
                 )
-            print("Compose search test passed")
+            compose("up", "-d", "--wait", "db")
+            result = query()
+            if result != expected:
+                raise RuntimeError(
+                    f"Unexpected response after database restart: {result!r}"
+                )
+            print("Compose search and database recovery tests passed")
         except Exception:
             compose("logs", "--no-color")
             raise
